@@ -7,6 +7,7 @@
 
 #include "coverageFile.h"
 #include <iomanip>
+//#include "asprintf.h" // cygwin only
 
 CoverageFile::CoverageFile(ContextCoverage *context)
 : IntersectFile(context),
