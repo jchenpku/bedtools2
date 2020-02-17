@@ -16,6 +16,7 @@ double kf_lgamma(double z);
 double kf_erfc(double x);
 #define KF_GAMMA_EPS 1e-14
 #define KF_TINY 1e-290
+#define M_SQRT2    1.41421356237309504880
 
 // regularized lower incomplete gamma function, by series expansion
 double _kf_gammap(double s, double z);
