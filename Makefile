@@ -35,7 +35,7 @@ endif
 ifeq ($(USE_RAND),1)
 BT_CXXFLAGS += -DUSE_RAND
 else
-BT_CXXFLAGS += -std=c++11
+BT_CXXFLAGS += -std=gnu++11
 endif
 
 BT_LDFLAGS =
