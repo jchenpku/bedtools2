@@ -27,7 +27,7 @@ endif
 ifeq ($(USE_RAND),1)
 export CXXFLAGS += -DUSE_RAND
 else
-export CXXFLAGS += -std=gnu++11
+export CXXFLAGS += -std=gnu++11 # switch to gnu++11 to get ride of error related to fseek
 endif 
 
 export LIBS		= -lz
