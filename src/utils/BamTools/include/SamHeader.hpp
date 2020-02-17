@@ -7,7 +7,7 @@
 #include <string.h>
 #include <api/BamAux.h>
 #include <stdlib.h>
-
+#include <strdup.h>
 
 #ifdef WITH_HTS_CB_API
 #include <htslib/hfile.h>
