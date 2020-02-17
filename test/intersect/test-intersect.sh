@@ -7,9 +7,9 @@ FAILURES=0;
 check()
 {
 	if diff $1 $2; then
-    	echo ok
+		echo ok
 	else
-    	FAILURES=$(expr $FAILURES + 1);
+		FAILURES=$(expr $FAILURES + 1);
 		echo fail
 	fi
 }
@@ -196,9 +196,10 @@ rm obs exp
 #                       -split                            #
 ###########################################################
 ###########################################################
-samtools view -Sb one_block.sam > one_block.bam 2>/dev/null
-samtools view -Sb two_blocks.sam > two_blocks.bam 2>/dev/null
-samtools view -Sb three_blocks.sam > three_blocks.bam 2>/dev/null
+../htsutil samtobam one_block.sam one_block.bam
+../htsutil samtobam two_blocks.sam two_blocks.bam
+../htsutil samtobam three_blocks.sam three_blocks.bam
+../htsutil samtobam split.issue750.sam split.issue750.bam
 
 
 ##################################################################
@@ -207,7 +208,7 @@ samtools view -Sb three_blocks.sam > three_blocks.bam 2>/dev/null
 echo -e "    intersect.t17...\c"
 echo \
 "three_blocks	16	chr1	1	40	10M10N10M10N10M	*	0	0	GAAGGCCACCGCCGCGGTTATTTTCCTTCA	CCCDDB?=FJIIJIGFJIJHIJJJJJJJJI	MD:Z:50" > exp
-$BT intersect -abam three_blocks.bam -b three_blocks_nomatch.bed | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_nomatch.bed | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -216,7 +217,7 @@ rm obs exp
 ##################################################################
 echo -e "    intersect.t18...\c"
 touch exp
-$BT intersect -abam three_blocks.bam -b three_blocks_nomatch.bed -split | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_nomatch.bed -split | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -226,7 +227,7 @@ rm obs exp
 echo -e "    intersect.t19...\c"
 echo \
 "three_blocks	16	chr1	1	40	10M10N10M10N10M	*	0	0	GAAGGCCACCGCCGCGGTTATTTTCCTTCA	CCCDDB?=FJIIJIGFJIJHIJJJJJJJJI	MD:Z:50" > exp
-$BT intersect -abam three_blocks.bam -b three_blocks_match.bed -split | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_match.bed -split | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -236,7 +237,7 @@ rm obs exp
 ##################################################################
 echo -e "    intersect.t20...\c"
 touch exp
-$BT intersect -abam three_blocks.bam -b three_blocks_match.bed -split -s | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_match.bed -split -s | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -246,7 +247,7 @@ rm obs exp
 echo -e "    intersect.t21...\c"
 echo \
 "three_blocks	16	chr1	1	40	10M10N10M10N10M	*	0	0	GAAGGCCACCGCCGCGGTTATTTTCCTTCA	CCCDDB?=FJIIJIGFJIJHIJJJJJJJJI	MD:Z:50" > exp
-$BT intersect -abam three_blocks.bam -b three_blocks_match_1bp.bed -split | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_match_1bp.bed -split | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -255,7 +256,7 @@ rm obs exp
 ################################################################################
 echo -e "    intersect.t22...\c"
 touch exp
-$BT intersect -abam three_blocks.bam -b three_blocks_match_1bp.bed -split -f 0.1 | samtools view - > obs
+$BT intersect -abam three_blocks.bam -b three_blocks_match_1bp.bed -split -f 0.1 | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -321,7 +322,6 @@ check obs exp
 rm obs exp
 
 
-
 ###########################################################
 #  Added split test from bug150. See that overlap bases
 # with -split are correctly affected by overlap fraction
@@ -334,13 +334,263 @@ check exp obs
 rm exp obs
 
 
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+############################################################
+echo -e "    intersect.t22.h...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	20
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	0	100	exon1	1	+	10
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.5 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750
+# With -u 
+############################################################
+echo -e "    intersect.t22.i...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110," > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.5 -bed -split -u > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750
+# Increase fraction of overlap 
+############################################################
+echo -e "    intersect.t22.j...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	0	100	exon1	1	+	10
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.7 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750
+# Increase fraction of overlap 
+############################################################
+echo -e "    intersect.t22.j...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	.	-1	-1	.	-1	.	0
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	0	100	exon1	1	+	10
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.7 -bed -split -wao > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750
+# Increase fraction of overlap 
+############################################################
+echo -e "    intersect.t22.k...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110," > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.7 -bed -split -u > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -r
+############################################################
+echo -e "    intersect.t22.l...\c"
+touch exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.5 -bed -split -wo -r > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750
+# With -r, lowering -f  
+############################################################
+echo -e "    intersect.t22.m...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	20
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	0	100	exon1	1	+	10
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.1 -bed -split -r -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -F
+############################################################
+echo -e "    intersect.t22.n...\c"
+touch exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -F 0.5 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -F, lowering
+############################################################
+echo -e "    intersect.t22.o...\c"
+touch exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -F 0.31 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -F, lowering
+############################################################
+echo -e "    intersect.t22.p...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -F 0.30 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -F, lowering
+############################################################
+echo -e "    intersect.t22.q...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -F 0.20 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+# With -F, lowering
+############################################################
+echo -e "    intersect.t22.r...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	20
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	0	100	exon1	1	+	10
+chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -F 0.10 -bed -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+############################################################
+echo -e "    intersect.t22.s...\c"
+echo \
+"chr1	90	220	two_blocks_two_exons	40	-	90	220	0,0,0	2	10,20,	0,110,	chr1	200	300	exon2	2	-	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.5 -bed -split -wo -s > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #750: 
+#             https://github.com/arq5x/bedtools2/issues/750 
+############################################################
+echo -e "    intersect.t22.t...\c"
+echo \
+"chr1	0	30	one_block_one_exon_30bp	40	-	0	30	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	30
+chr1	80	110	one_block_one_exon_20bp	40	-	80	110	0,0,0	1	30,	0,	chr1	0	100	exon1	1	+	20" > exp
+$BT intersect -a split.issue750.bam -b exons.issue750.bed  -f 0.5 -bed -split -wo -S > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #773: 
+#             https://github.com/arq5x/bedtools2/issues/773 
+############################################################
+echo -e "    intersect.t22.u...\c"
+echo \
+"X	10	30	A2	1	+	0	30	255,0,0	1	20	0	X	0	20	B1	0	+	10
+X	10	30	A2	1	+	0	30	255,0,0	1	20	0	X	0	20	B2	0	+	10" > exp
+$BT intersect -a issue_773_b.bed -b issue_773_y.bed  -f 0.5 -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #773: 
+#             https://github.com/arq5x/bedtools2/issues/773 
+############################################################
+echo -e "    intersect.t22.v...\c"
+touch exp
+$BT intersect -a issue_773_b.bed -b issue_773_y.bed  -f 0.6 -split -wo > obs
+check obs exp
+rm obs exp
+
+###########################################################
+#  Test that -f is based on the cumulative fraction of the
+#  split overlaps for the A interval, not based on _each_
+#  alignment. See issue #773: 
+#             https://github.com/arq5x/bedtools2/issues/773 
+############################################################
+echo -e "    intersect.t22.w...\c"
+echo \
+"X	10	30	A2	1	+	0	30	255,0,0	1	20	0	.	-1	-1	.	-1	.	0" > exp
+$BT intersect -a issue_773_b.bed -b issue_773_y.bed  -f 0.6 -split -wao > obs
+check obs exp
+rm obs exp
+
+
 ##################################################################
 #  Test that only the mapped read is is found as an intersection
 ##################################################################
 echo -e "    intersect.t23...\c"
 echo \
 "mapped	16	chr1	1	40	30M	*	0	0	GAAGGCCACCGCCGCGGTTATTTTCCTTCA	CCCDDB?=FJIIJIGFJIJHIJJJJJJJJI	MD:Z:50" > exp
-samtools view -Sb mapped_and_unmapped.sam 2>/dev/null | $BT intersect -abam - -b a.bed | samtools view - > obs
+../htsutil samtobam mapped_and_unmapped.sam | $BT intersect -abam - -b a.bed | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -350,7 +600,7 @@ rm obs exp
 echo -e "    intersect.t24...\c"
 echo \
 "umapped	4	*	1	40	30M	*	0	0	GAAGGCCACCGCCGCGGTTATTTTCCTTCA	CCCDDB?=FJIIJIGFJIJHIJJJJJJJJI	MD:Z:50" > exp
-samtools view -Sb mapped_and_unmapped.sam 2>/dev/null | $BT intersect -abam - -b a.bed -v | samtools view - > obs
+../htsutil samtobam mapped_and_unmapped.sam | $BT intersect -abam - -b a.bed -v | ../htsutil viewbamrecords > obs
 check obs exp
 rm obs exp
 
@@ -727,34 +977,34 @@ rm exp obs
 ##################################################################
 echo -e "    intersect.t63...\c"
 echo -n "" > exp
-$BT intersect -a x.bam -b y.bed -f 0.21 -F 0.21 -wa | samtools view - > obs
+$BT intersect -a x.bam -b y.bed -f 0.21 -F 0.21 -wa | ../htsutil viewbamrecords > obs
 check exp obs
 rm exp obs
 
 echo -e "    intersect.t64...\c"
 echo "a1	0	chr1	11	255	10M	*	0	0	*	*
 a2	16	chr2	11	255	10M	*	0	0	*	*" > exp
-$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.21 -wa | samtools view - > obs
+$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.21 -wa | ../htsutil viewbamrecords > obs
 check exp obs
 rm exp obs
 
 echo -e "    intersect.t65...\c"
 echo "a1	0	chr1	11	255	10M	*	0	0	*	*
 a2	16	chr2	11	255	10M	*	0	0	*	*" > exp
-$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.21 -wa | samtools view - > obs
+$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.21 -wa | ../htsutil viewbamrecords > obs
 check exp obs
 rm exp obs
 
 echo -e "    intersect.t66...\c"
 echo "a1	0	chr1	11	255	10M	*	0	0	*	*
 a2	16	chr2	11	255	10M	*	0	0	*	*" > exp
-$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.50 -wa | samtools view - > obs
+$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.50 -wa | ../htsutil viewbamrecords > obs
 check exp obs
 rm exp obs
 
 echo -e "    intersect.t67...\c"
 echo -n "" > exp
-$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.51 -wa | samtools view - > obs
+$BT intersect -a x.bam -b y.bed -f 0.19 -F 0.51 -wa | ../htsutil viewbamrecords > obs
 check exp obs
 rm exp obs
 

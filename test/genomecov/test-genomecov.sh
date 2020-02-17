@@ -18,13 +18,14 @@ check()
 #                       BAM files                         #
 ###########################################################
 ###########################################################
-samtools view -Sb one_block.sam > one_block.bam 2>/dev/null
-samtools view -Sb two_blocks.sam > two_blocks.bam 2>/dev/null
-samtools view -Sb three_blocks.sam > three_blocks.bam 2>/dev/null
-samtools view -Sb sam-w-del.sam > sam-w-del.bam 2>/dev/null
-samtools view -Sb pair-chip.sam > pair-chip.bam 2>/dev/null
-samtools view -Sb chip.sam > chip.bam 2>/dev/null
+../htsutil samtobam one_block.sam one_block.bam
+../htsutil samtobam two_blocks.sam two_blocks.bam
+../htsutil samtobam three_blocks.sam three_blocks.bam
+../htsutil samtobam sam-w-del.sam sam-w-del.bam
+../htsutil samtobam pair-chip.sam pair-chip.bam
+../htsutil samtobam chip.sam chip.bam
 
+(grep '^@' one_block.sam; sed '/^@/d' *block*.sam) | ../htsutil samtobam - merged.bam
 
 
 ##################################################################
@@ -76,7 +77,7 @@ echo \
 chr1	30	40	2
 chr1	40	50	1
 chr1	50	1000	0" > exp
-samtools merge -f /dev/stdout *block*.bam | $BT genomecov -ibam - -bga  > obs
+cat merged.bam | $BT genomecov -ibam - -bga  > obs
 check obs exp
 rm obs exp
 
@@ -93,7 +94,7 @@ chr1	20	25	2
 chr1	25	30	3
 chr1	30	50	1
 chr1	50	1000	0" > exp
-samtools merge -f /dev/stdout *block*.bam | $BT genomecov -ibam - -bga -split > obs
+$BT genomecov -ibam merged.bam -bga -split > obs
 check obs exp
 rm obs exp
 
@@ -257,6 +258,32 @@ echo \
 "chr1	1	101	1
 chr1	200	300	1" > exp
 $BT genomecov -ibam chip.bam -bg -fs 100 > obs
+check obs exp
+rm obs exp
+
+rm one_block.bam two_blocks.bam three_blocks.bam sam-w-del.bam pair-chip.bam chip.bam merged.bam
+
+##################################################################
+#  Make sure empty bam doesn't cause failure
+##################################################################
+echo -e "    genomecov.t16...\c"
+echo \
+"1	0	100	100	1
+2	0	100	100	1
+3	0	100	100	1
+genome	0	300	300	1" > exp
+$BT genomecov -ibam empty.bam > obs
+check obs exp
+rm obs exp
+
+##################################################################
+#  Make sure empty CRAM doesn't cause failure
+##################################################################
+echo -e "    genomecov.t17...\c"
+echo \
+"chr1	0	50000	50000	1
+genome	0	50000	50000	1" > exp
+CRAM_REFERENCE=test_ref.fa $BT genomecov -ibam empty.cram > obs
 check obs exp
 rm obs exp
 

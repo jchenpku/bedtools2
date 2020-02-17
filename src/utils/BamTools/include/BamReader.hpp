@@ -41,11 +41,7 @@ namespace BamTools {
 			_SamFile(samFile* fp, uint32_t _idx, BamReader* reader) : 
 				fp(fp), idx(_idx), ip(NULL), it(NULL), 
 				reader(reader), has_range(false)
-			{
-				// default to just reading "core"
-				// atts., ignore seq and qual
-				//set_cram_reqd_fields(2559);
-			}
+			{}
 			~_SamFile() 
 			{
 				if(nullptr != ip) hts_idx_destroy(ip);
@@ -182,10 +178,11 @@ namespace BamTools {
 
 			if(fp->format.format == htsExactFormat::cram)
 			{
-				const char* ref_file = getenv("CRAM_REFERENCE");
-				if(NULL == ref_file || hts_set_fai_filename(fp, ref_file) < -1)
+				char* ref_file = getenv("CRAM_REFERENCE");
+				if(NULL == ref_file || hts_set_fai_filename(fp, ref_file) == -1)
 				{
-					// If we are not able to load a reference we just load the core data
+					// If we are not able to load a reference 
+					// we will punt and just load the core alignment data.
 					sam_file->set_cram_reqd_fields(2559);
 				}
 			}
@@ -266,7 +263,7 @@ namespace BamTools {
 		}
 		std::string GetErrorString() const
 		{
-			return "FIXME: error string is not supported";
+			return _error_str;
 		}
 
 		bool GetNextAlignment(BamAlignment& alignment)
@@ -361,7 +358,8 @@ namespace BamTools {
 
 			for(auto& sam: _files)
 			{
-				if(!_read_sam_file(sam))
+				_error_str = "";
+				if(!_read_sam_file(sam) && _error_str != "")
 					return false;
 			}
 

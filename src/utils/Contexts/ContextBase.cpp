@@ -29,6 +29,7 @@ ContextBase::ContextBase()
   _writeB(false),
   _leftJoin(false),
   _writeCount(false),
+  _writeCountsPerDatabase(false),
   _writeOverlap(false),
   _writeAllOverlap(false),
   _haveFractionA(false),
@@ -271,7 +272,7 @@ bool ContextBase::isValidState()
 		return false;
 	}
 	if (getObeySplits()) {
-		_splitBlockInfo = new BlockMgr(_overlapFractionA, _reciprocalFraction);
+		_splitBlockInfo = new BlockMgr(_overlapFractionA, _overlapFractionB, _reciprocalFraction);
 	}
 	if (hasColumnOpsMethods()) {
 
@@ -648,7 +649,7 @@ FileRecordMgr *ContextBase::getNewFRM(const string &filename, int fileIdx) {
 bool ContextBase::parseIoBufSize(string bufStr)
 {
 	char lastChar = bufStr[bufStr.size()-1];
-	int multiplier = 1;
+	size_t multiplier = 1;
 	if (!isdigit(lastChar)) {
 		switch (lastChar) {
 		case 'K':
@@ -674,7 +675,7 @@ bool ContextBase::parseIoBufSize(string bufStr)
 		_errorMsg = "\n***** ERROR: argument passed to -iobuf is not numeric. *****";
 		return false;
 	}
-	_ioBufSize = (int)str2chrPos(bufStr) * multiplier;
+	_ioBufSize = (size_t)str2chrPos(bufStr) * multiplier;
 	if (_ioBufSize < MIN_ALLOWED_BUF_SIZE) {
 		_errorMsg = "\n***** ERROR: specified buffer size is too small. *****";
 		return false;

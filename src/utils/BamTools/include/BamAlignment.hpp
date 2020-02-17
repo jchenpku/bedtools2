@@ -3,9 +3,35 @@
 #include <stdint.h>
 #include <memory>
 #include <cstring>
+#include <stdlib.h>
+#include <htslib/hts_endian.h>
 namespace BamTools {
 	const static char cigar_ops_as_chars[] = { 'M', 'I', 'D', 'N', 'S', 'H', 'P', '=', 'X', 'B' };
 	static inline std::string _mkstr(const uint8_t* what) { return std::string((const char*)what + 1); }
+	template <class T>
+	static inline T _mk_numeric(const uint8_t* what) {
+		switch(what[0]) {
+			case 'd': 
+				return le_to_double(what + 1);
+			case 'f':
+				return le_to_float(what + 1);
+			case 'A':
+			case 'C':
+				return what[1];
+			case 'c':
+				return le_to_i8(what + 1);
+			case 's':
+				return le_to_i16(what + 1);
+			case 'S':
+				return le_to_u16(what + 1);
+			case 'i':
+				return le_to_i32(what + 1);
+			case 'I':
+				return le_to_u32(what + 1);
+			default:
+				return 0;
+		}
+	}
 	struct CigarOp {
 	  
 		char     Type;   //!< CIGAR operation type (MIDNSHPX=)
@@ -153,7 +179,7 @@ namespace BamTools {
 			const uint8_t* qual = bam_get_qual(&_bam);
 
 			if(_bam.core.l_qseq == 0 || qual[0] == 0xffu)
-				Qualities.resize(QuerySequenceLength, -1);
+				Qualities.resize(QuerySequenceLength, 33);
 			else for(unsigned i = 0; i < QuerySequenceLength; i ++)
 				Qualities.push_back((char)(33 + qual[i]));
 		}
@@ -161,10 +187,10 @@ namespace BamTools {
 		bool SyncExtraData() const
 		{
 #define BAM_DATA_OFFSET(what) ((size_t)(((uint8_t*)bam_get_##what(&_bam)) - ((uint8_t*)_bam.data)))
-			void* qname_buf = _ensure_data_chunk((bam1_t*)&_bam, BAM_DATA_OFFSET(qname), _bam.core.l_qname, Name.size());
+			void* qname_buf = _ensure_data_chunk((bam1_t*)&_bam, BAM_DATA_OFFSET(qname), _bam.core.l_qname, Name.size() + 1);
 			if(NULL == qname_buf) return false;
-			memcpy(qname_buf, Name.c_str(), Name.size());
-			((bam1_t*)&_bam)->core.l_qname = Name.size();
+			memcpy(qname_buf, Name.c_str(), Name.size() + 1);
+			((bam1_t*)&_bam)->core.l_qname = Name.size() + 1;
 
 			uint32_t* cigar_buf = (uint32_t*)_ensure_data_chunk((bam1_t*)&_bam, BAM_DATA_OFFSET(cigar), _bam.core.n_cigar * sizeof(uint32_t), sizeof(uint32_t) * CigarData.size());
 			if(NULL == cigar_buf) return false;
@@ -233,6 +259,7 @@ namespace BamTools {
 		{
 			memset(&_bam, 0, sizeof(_bam));
 			bam_copy1(&_bam, ba.HtsObj());
+			Name = ba.Name;
 			CigarData = ba.CigarData;
 			QueryBases = ba.QueryBases;
 			Qualities = ba.Qualities;
@@ -293,7 +320,7 @@ namespace BamTools {
 			return !(_bam.core.flag & BAM_FUNMAP);
 		}
 
-		bool IsMateMapped() const
+		inline bool IsMateMapped() const
 		{
 			return !(_bam.core.flag & BAM_FMUNMAP);
 		}
@@ -322,9 +349,27 @@ namespace BamTools {
 		bool GetTag(const std::string& tag, T& destination) const
 		{
 
-			_TagGetter<std::string, T> string_getter(*this, destination);
-			if(string_getter)
-				return string_getter(tag, _mkstr);
+			{
+				_TagGetter<std::string, T> string_getter(*this, destination);
+				if(string_getter)
+					return string_getter(tag, _mkstr);
+			}
+
+#define _GET_NUM(type) \
+			{\
+				_TagGetter<type, T> getter(*this, destination);\
+				if(getter)\
+					return getter(tag, _mk_numeric<type>);\
+			}
+			_GET_NUM(uint8_t);
+			_GET_NUM(int8_t);
+			_GET_NUM(uint16_t);
+			_GET_NUM(int16_t);
+			_GET_NUM(uint32_t);
+			_GET_NUM(int32_t);
+			_GET_NUM(double);
+			_GET_NUM(float);
+
 			return false;
 		}
 

@@ -74,7 +74,8 @@ public:
 	virtual void setZeroLength(bool val) { _zeroLength = val; }
 
 	virtual const string &getStrand() const { return _strand; }
-	virtual void setStrand(const string &val) { _strand = val;
+	virtual void setStrand(const string &val) {
+		_strand = val;
 		_strandVal = (val == "+" ? FORWARD : (val == "-" ? REVERSE : UNKNOWN));
 	}
 	virtual void setStrand(char val) { _strand = val;
@@ -139,7 +140,8 @@ public:
 							float overlapFractionA,
 							float overlapFractionB,
 							bool reciprocalFraction,
-						    bool eitherFraction) const;
+						    bool eitherFraction,
+						    bool obeySplits) const;
 
 	// *** WARNING !!! ** sameChromIntersects is a faster version of the intersects method,
 	// BUT the caller MUST ensure that the records are on the same
@@ -150,7 +152,8 @@ public:
 									 float overlapFractionA,
 									 float overlapFractionB,
 									 bool reciprocalFraction,
-									 bool eitherFraction) const;
+									 bool eitherFraction,
+									 bool obeySplits) const;
 
 //	virtual static bool isNumericField(int fieldNum) const = 0;
 

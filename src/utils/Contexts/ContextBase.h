@@ -181,7 +181,7 @@ protected:
     bool _obeySplits;
     bool _uncompressedBam;
     bool _useBufferedOutput;
-    int _ioBufSize;
+    size_t _ioBufSize;
 
 	bool _anyHit;
     bool _noHit;
@@ -189,6 +189,7 @@ protected:
     bool _writeB;
     bool _leftJoin;
     bool _writeCount;
+    bool _writeCountsPerDatabase;
     bool _writeOverlap;
     bool _writeAllOverlap;
     bool _haveFractionA;

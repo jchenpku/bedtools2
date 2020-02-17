@@ -47,22 +47,29 @@ NewGenomeFile::~NewGenomeFile(void) {
 
 void NewGenomeFile::loadGenomeFileIntoMap() {
 
-
-	ifstream genFile(_genomeFileName.c_str());
-	if (!genFile.good()) {
-		cerr << "Error: Can't open genome file" << _genomeFileName << "Exiting..." << endl;
-		exit(1);
+	if (_genomeFileName == "-" || _genomeFileName == "stdin")
+	{
+		_genomeFile = &cin;
 	}
-	string sLine;
+	else
+	{
+		_genomeFile = new ifstream(_genomeFileName.c_str(), ios::in);
+		if (!_genomeFile->good()) 
+		{
+			cerr << "Error: Can't open genome file" << _genomeFileName << "Exiting..." << endl;
+			exit(1);
+		}
+	}
+
+	string line;
 	Tokenizer fieldTokens;
 	CHRPOS chrSize = 0;
+	_genomeLength = 0;
 	string chrName;
-	while (!genFile.eof()) {
-		sLine.clear();
+	while (getline(*_genomeFile, line)) {
 		chrSize = 0;
 		chrName.clear();
-		getline(genFile, sLine);
-		int numFields = fieldTokens.tokenize(sLine.c_str());
+		int numFields = fieldTokens.tokenize(line.c_str());
 
 		// allow use of .fai files.
 		if (numFields < 2) {
@@ -70,6 +77,13 @@ void NewGenomeFile::loadGenomeFileIntoMap() {
 		}
 		chrName = fieldTokens.getElem(0);
 		chrSize = str2chrPos(fieldTokens.getElem(1));
+		if (chrSize == 0) {
+			cerr << "Error: " 
+			     << chrName 
+			     << " has length equal to 0. Each chromosome must have non-zero length. Exiting." 
+			     << endl;
+			exit(1);
+		}
 		_maxId++;
 		_chromSizeIds[chrName] = pair<CHRPOS, int>(chrSize, _maxId);
 		_startOffsets.push_back(_genomeLength);
@@ -77,7 +91,7 @@ void NewGenomeFile::loadGenomeFileIntoMap() {
 		_chromList.push_back(chrName);
 	}
 	if (_maxId == -1) {
-		cerr << "Error: The genome file " << _genomeFileName << " has no valid entries. Exiting." << endl;
+		cerr << "Error: The genome file " << _genomeFileName << " has no valid entries (are you sure it's a 2-column bedtools genome file). Exiting." << endl;
 		exit(1);
 	}
 	// Special: BAM files can have unmapped reads, which show as no chromosome, or an empty chrom string.
@@ -89,7 +103,6 @@ void NewGenomeFile::loadGenomeFileIntoMap() {
 
 	_startOffsets.push_back(_genomeLength); //insert the final length as the last element
 	//to help with the lower_bound call in the projectOnGenome method.
-	genFile.close();
 }
 
 bool NewGenomeFile::projectOnGenome(CHRPOS genome_pos, string &chrom, CHRPOS &start) {
