@@ -1,4 +1,5 @@
-**This bedtools2 is modified to be complied under cygwin **
+**This bedtools2 is modified to be complied under cygwin**
+
 
 ![shamalamadingdong](https://github.com/arq5x/bedtools2/blob/master/docs/bedtools.swiss.png "foo")
 
